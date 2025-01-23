@@ -12,21 +12,29 @@ import {
 import { z, ZodType } from "zod";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const schema: ZodType = z.object({
   board_name: z
     .string()
     .nonempty({ message: "Can't be empty" })
     .max(50, { message: "max 50 char." }),
-  board_column: z.array(
-    z.object({
-      column_name: z
-        .string()
-        .nonempty({ message: "Can't be empty" })
-        .max(50, { message: "max 50 char." }),
-    })
-  ),
+  board_column: z
+    .array(
+      z.object({
+        column_name: z
+          .string()
+          .nonempty({ message: "Can't be empty" })
+          .max(50, { message: "max 50 char." }),
+        id: z.string().optional(),
+      })
+    )
+    .refine(
+      (columns) =>
+        new Set(columns.map((column) => column.column_name.trim())).size ===
+        columns.length,
+      { message: "Column names must be unique" }
+    ),
 });
 
 function EditBoardModal(props: {
@@ -37,6 +45,8 @@ function EditBoardModal(props: {
   selectedBoard: boardColumn | null;
   fetchBoards: () => void;
 }) {
+  const [columnsToDelete, setColumnsToDelete] = useState<string[]>([]);
+
   const methods = useForm<boardFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -47,6 +57,7 @@ function EditBoardModal(props: {
           .map((column) => ({
             column_name: column.column_name,
             id: column.id,
+            fieldKey: column.id || crypto.randomUUID(),
           })) || [],
     },
   });
@@ -68,30 +79,32 @@ function EditBoardModal(props: {
         board_name: data.board_name,
       });
 
-      const existingColumnIds = props.selectedBoard?.board_column.map(
-        (column) => column.id
-      );
-
       const updatePromises = data.board_column.map((column) => {
         if (!props.selectedBoard) return;
 
-        if (column.id && existingColumnIds.includes(column.id)) {
+        if (column.id) {
           return updateColumn(column.id, {
             column_name: column.column_name,
             board_id: props.selectedBoard.id,
+            id: column.id,
           });
         } else {
           return addColumn({
             column_name: column.column_name,
             board_id: props.selectedBoard.id,
+            id: column.id,
           });
         }
       });
+      const deletePromises = columnsToDelete.map((id: string) =>
+        deleteColumn(id)
+      );
 
-      await Promise.all(updatePromises);
+      await Promise.all([...updatePromises, ...deletePromises]);
 
       props.fetchBoards();
       reset();
+      setColumnsToDelete([]);
       props.setEditBoardModalOpen(false);
     } catch (err) {
       console.error("Error editing board:", err);
@@ -101,7 +114,7 @@ function EditBoardModal(props: {
   const { fields, append, remove } = useFieldArray({
     control,
     name: "board_column",
-    keyName: "id",
+    keyName: "fieldKey",
   });
 
   useEffect(() => {
@@ -113,22 +126,11 @@ function EditBoardModal(props: {
           .map((column) => ({
             column_name: column.column_name,
             id: column.id,
+            fieldKey: column.id || crypto.randomUUID(),
           })),
       });
     }
   }, [props.selectedBoard, reset]);
-
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteColumn(id);
-      props.fetchBoards();
-    } catch (err) {
-      console.error("Error deleting column:", err);
-    }
-  };
-
-  console.log(props.selectedBoard?.board_column);
-  console.log(fields);
 
   return (
     <Modal
@@ -191,8 +193,8 @@ function EditBoardModal(props: {
                 </h3>
                 {fields.map((field, index) => (
                   <div
-                    key={field.id}
-                    className="flex items-center gap-[1rem] w-full"
+                    key={field.fieldKey}
+                    className="flex items-center gap-[1rem] w-full relative"
                   >
                     <input
                       {...register(`board_column.${index}.column_name`)}
@@ -210,10 +212,9 @@ function EditBoardModal(props: {
                     />
                     <button
                       type="button"
-                      onClick={async () => {
-                        const columnId = field.id;
-                        if (columnId) {
-                          await handleDelete(columnId);
+                      onClick={() => {
+                        if (field.id) {
+                          setColumnsToDelete((prev) => [...prev, field.id]);
                         }
                         remove(index);
                       }}
@@ -222,16 +223,24 @@ function EditBoardModal(props: {
                       <img src={crossSvg} alt="crossSvg" />
                     </button>
                     {errors.board_column?.[index]?.column_name && (
-                      <span className="absolute right-[4rem] text-[0.625rem] leading-[1rem] tracking-[-0.015rem] text-[#EC5757] mr-[1rem]">
+                      <span className="absolute right-[2rem] text-[0.625rem] leading-[1rem] tracking-[-0.015rem] text-[#EC5757] mr-[1rem]">
                         {errors.board_column[index]?.column_name?.message}
                       </span>
                     )}
                   </div>
                 ))}
+
+                {errors.board_column?.message && (
+                  <span className="text-red-500 text-sm">
+                    {errors.board_column.message}
+                  </span>
+                )}
               </div>
               <button
                 type="button"
-                onClick={() => append({ column_name: "", id: "" })}
+                onClick={() =>
+                  append({ column_name: "", id: "", board_id: "" })
+                }
                 className={clsx(
                   props.darkMode
                     ? "bg-[#FFF] hover:bg-[#ffffffe5]"
