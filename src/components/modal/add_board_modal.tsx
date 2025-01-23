@@ -6,7 +6,6 @@ import {
   addColumn,
   boardColumn,
   boardFormData,
-  getBoard,
 } from "../../utils/api";
 import { z, ZodType } from "zod";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
@@ -33,8 +32,7 @@ function AddNewBoard(props: {
   darkMode: boolean;
   boards: boardColumn[];
   setBoards: (status: boardColumn[]) => void;
-  newBoardName: string;
-  setNewBoardName: (status: string) => void;
+  fetchBoards: () => void;
 }) {
   const methods = useForm<boardFormData>({
     resolver: zodResolver(schema),
@@ -56,7 +54,7 @@ function AddNewBoard(props: {
     try {
       const addedBoard = await addBoard({
         ...data,
-        board_name: props.newBoardName,
+        board_name: data.board_name,
       });
 
       const columnPromises = data.board_column.map((column) =>
@@ -65,11 +63,12 @@ function AddNewBoard(props: {
           board_id: addedBoard.id,
         })
       );
-
       await Promise.all(columnPromises);
 
-      props.setBoards(await getBoard());
+      props.setBoards([...props.boards, addedBoard]);
+
       reset();
+      props.fetchBoards();
       props.setAddBoardModalOpen(false);
     } catch (err) {
       console.error("Error adding board:", err);
@@ -112,9 +111,7 @@ function AddNewBoard(props: {
               </h3>
               <div className="flex items-center">
                 <input
-                  {...register("board_name", {
-                    onChange: (e) => props.setNewBoardName(e.target.value),
-                  })}
+                  {...register("board_name")}
                   type="text"
                   id="board-name"
                   placeholder="e.g. Web Design"
@@ -134,7 +131,7 @@ function AddNewBoard(props: {
               </div>
             </div>
             <div className="flex flex-col">
-              <div className="flex flex-col gap-[0.5rem] mb-[1.5rem]">
+              <div className="flex flex-col gap-[0.5rem] mb-[1.5rem] overflow-y-scroll custom-scrollbar max-h-[15rem]">
                 <h3
                   className={clsx(
                     props.darkMode ? "text-[#FFF]" : "text-[#828FA3]",
@@ -147,7 +144,7 @@ function AddNewBoard(props: {
                   {fields.map((field, index) => (
                     <div
                       key={field.id}
-                      className="flex items-center gap-[1rem] w-full"
+                      className="flex items-center gap-[1rem] w-full relative"
                     >
                       <input
                         {...register(`board_column.${index}.column_name`)}
@@ -169,7 +166,6 @@ function AddNewBoard(props: {
                         onClick={() => {
                           remove(index);
                         }}
-                        type="button"
                         className="outline-none select-none"
                       >
                         <img src={crossSvg} alt="crossSvg" />
@@ -185,7 +181,7 @@ function AddNewBoard(props: {
               </div>
               <button
                 onClick={() => {
-                  append({ column_name: "" });
+                  append({ column_name: "", id: "", board_id: "" });
                 }}
                 type="button"
                 className={clsx(
