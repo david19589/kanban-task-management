@@ -167,7 +167,9 @@ function EditBoardModal(props: {
                   type="text"
                   id="board-name"
                   className={clsx(
-                    errors.board_name && "border-[#EA5555]",
+                    errors.board_name
+                      ? "border-[#EA5555]"
+                      : "hover:border-[#635FC7] transition-all duration-200",
                     props.darkMode
                       ? "bg-[#2B2C37] text-[#FFF]"
                       : "bg-[#FFF] text-[#000112]",
@@ -199,11 +201,12 @@ function EditBoardModal(props: {
                     <input
                       {...register(`board_column.${index}.column_name`)}
                       type="text"
-                      id="subTask"
+                      id={`${field.id} subTask`}
                       className={clsx(
                         errors.board_column &&
-                          errors.board_column[index]?.column_name &&
-                          "border-[#EA5555]",
+                          errors.board_column[index]?.column_name
+                          ? "border-[#EA5555]"
+                          : "hover:border-[#635FC7] transition-all duration-200",
                         props.darkMode
                           ? "bg-[#2B2C37] text-[#FFF]"
                           : "bg-[#FFF] text-[#000112]",
