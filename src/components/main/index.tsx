@@ -1,50 +1,99 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Header from "../header";
 import Sidebar from "../sidebar";
 import showSvg from "../../assets/icon-show-sidebar.svg";
 import clsx from "clsx";
 import Board from "../board";
-import { boardColumn, getBoard, getColumn } from "../../utils/api";
+import {
+  boardColumn,
+  getBoard,
+  getColumn,
+  getSubtask,
+  getTask,
+  taskFormData,
+} from "../../utils/api";
 import AddNewBoard from "../modal/add_board_modal";
 import DeleteBoardModal from "../modal/delete_board_modal";
 import EditBoardModal from "../modal/edit_board_modal";
 import TaskDetailsModal from "../modal/task_details_modal";
+import AddNewTask from "../modal/add_task_modal";
+import DeleteTaskModal from "../modal/delete_task_modal";
+import EditTaskModal from "../modal/edit_task_modal";
 
 function Main() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(
+    () => localStorage.getItem("darkMode") === "true"
+  );
   const [showSidebar, setShowSidebar] = useState(true);
   const [addBoardModalOpen, setAddBoardModalOpen] = useState(false);
   const [editBoardModalOpen, setEditBoardModalOpen] = useState(false);
   const [deleteBoardModalOpen, setDeleteBoardModalOpen] = useState(false);
+  const [editTaskModalOpen, setEditTaskModalOpen] = useState(false);
+  const [deleteTaskModalOpen, setDeleteTaskModalOpen] = useState(false);
+  const [addTaskModalOpen, setAddTaskModalOpen] = useState(false);
   const [boards, setBoards] = useState<boardColumn[]>([]);
-  const [newBoardName, setNewBoardName] = useState("");
   const [selectedBoard, setSelectedBoard] = useState<boardColumn | null>(null);
   const [showTaskDetails, setShowTaskDetails] = useState(false);
+  const [showStatuses, setShowStatuses] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<taskFormData | null>(null);
 
-  const fetchBoards = async () => {
+  useEffect(() => {
+    localStorage.setItem("darkMode", darkMode.toString());
+  }, [darkMode]);
+
+  const fetchBoards = useCallback(async () => {
     try {
       const board = await getBoard();
       setBoards(board);
+
       if (board.length > 0) {
-        setNewBoardName(board[0].board_name);
-        const columns = await getColumn(board[0].id);
-        setSelectedBoard({ ...board[0], board_column: columns });
+        const currentBoard = selectedBoard
+          ? board.find((b: { id: string }) => b.id === selectedBoard.id)
+          : board[0];
+
+        if (currentBoard) {
+          const columns = await getColumn(currentBoard.id);
+
+          for (const column of columns) {
+            const allTasks = await getTask(column.id);
+            for (const task of allTasks) {
+              task.subtask = await getSubtask(task.id);
+            }
+            column.task = allTasks;
+          }
+
+          setSelectedBoard({ ...currentBoard, board_column: columns });
+        }
       }
     } catch (err) {
       console.error("Failed to fetch boards:", err);
       setBoards([]);
     }
-  };
+  }, [selectedBoard]);
 
   useEffect(() => {
-    fetchBoards();
-  }, []);
+    if (selectedBoard === null) {
+      fetchBoards();
+    }
+  }, [fetchBoards, selectedBoard]);
 
   const handleBoardClick = async (boardId: string) => {
     const board = boards.find((item) => item.id === boardId) || null;
+
     if (board) {
       try {
         const columns = await getColumn(boardId);
+
+        for (const column of columns) {
+          const tasks = await getTask(column.id);
+
+          for (const task of tasks) {
+            task.subtask = await getSubtask(task.id);
+          }
+
+          column.task = tasks;
+        }
+
         setSelectedBoard({ ...board, board_column: columns });
       } catch (err) {
         console.error("Failed to fetch columns:", err);
@@ -68,12 +117,11 @@ function Main() {
         setEditBoardModalOpen={setEditBoardModalOpen}
         boards={boards}
         setBoards={setBoards}
-        newBoardName={newBoardName}
-        setNewBoardName={setNewBoardName}
         setAddBoardModalOpen={setAddBoardModalOpen}
         setDeleteBoardModalOpen={setDeleteBoardModalOpen}
         selectedBoard={selectedBoard}
         handleBoardClick={handleBoardClick}
+        setAddTaskModalOpen={setAddTaskModalOpen}
       />
       <Sidebar
         showSidebar={showSidebar}
@@ -93,6 +141,7 @@ function Main() {
           setEditBoardModalOpen={setEditBoardModalOpen}
           selectedBoard={selectedBoard}
           setShowTaskDetails={setShowTaskDetails}
+          setSelectedTask={setSelectedTask}
         />
       )}
       <button
@@ -112,8 +161,7 @@ function Main() {
         darkMode={darkMode}
         boards={boards}
         setBoards={setBoards}
-        newBoardName={newBoardName}
-        setNewBoardName={setNewBoardName}
+        fetchBoards={fetchBoards}
       />
       <EditBoardModal
         editBoardModalOpen={editBoardModalOpen}
@@ -128,12 +176,47 @@ function Main() {
         setDeleteBoardModalOpen={setDeleteBoardModalOpen}
         darkMode={darkMode}
         selectedBoard={selectedBoard}
+        setSelectedBoard={setSelectedBoard}
+        fetchBoards={fetchBoards}
+        boards={boards}
+      />
+      <AddNewTask
+        addTaskModalOpen={addTaskModalOpen}
+        setAddTaskModalOpen={setAddTaskModalOpen}
+        darkMode={darkMode}
+        showStatuses={showStatuses}
+        setShowStatuses={setShowStatuses}
+        selectedBoard={selectedBoard}
         fetchBoards={fetchBoards}
       />
       <TaskDetailsModal
         showTaskDetails={showTaskDetails}
         setShowTaskDetails={setShowTaskDetails}
+        setEditTaskModalOpen={setEditTaskModalOpen}
+        setDeleteTaskModalOpen={setDeleteTaskModalOpen}
         darkMode={darkMode}
+        showStatuses={showStatuses}
+        setShowStatuses={setShowStatuses}
+        selectedBoard={selectedBoard}
+        fetchBoards={fetchBoards}
+        selectedTask={selectedTask}
+      />
+      <EditTaskModal
+        editTaskModalOpen={editTaskModalOpen}
+        setEditTaskModalOpen={setEditTaskModalOpen}
+        darkMode={darkMode}
+        showStatuses={showStatuses}
+        setShowStatuses={setShowStatuses}
+        selectedBoard={selectedBoard}
+        fetchBoards={fetchBoards}
+        selectedTask={selectedTask}
+      />
+      <DeleteTaskModal
+        deleteTaskModalOpen={deleteTaskModalOpen}
+        setDeleteTaskModalOpen={setDeleteTaskModalOpen}
+        darkMode={darkMode}
+        fetchBoards={fetchBoards}
+        selectedTask={selectedTask}
       />
     </div>
   );
