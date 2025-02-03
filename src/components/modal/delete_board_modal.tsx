@@ -1,20 +1,62 @@
 import clsx from "clsx";
 import Modal from ".";
-import { boardColumn, deleteBoard } from "../../utils/api";
+import {
+  boardColumn,
+  deleteBoard,
+  getColumn,
+  getSubtask,
+  getTask,
+} from "../../utils/api";
 
 function DeleteBoardModal(props: {
   deleteBoardModalOpen: boolean;
   setDeleteBoardModalOpen: (status: boolean) => void;
   darkMode: boolean;
   selectedBoard: boardColumn | null;
+  setSelectedBoard: (status: boardColumn | null) => void;
   fetchBoards: () => void;
+  boards: boardColumn[];
 }) {
   const handleDelete = async () => {
     if (!props.selectedBoard) return;
 
     try {
-      await deleteBoard(props.selectedBoard?.id);
+      await deleteBoard(props.selectedBoard.id);
+
       props.fetchBoards();
+
+      const remainingBoards = props.boards.filter(
+        (b) => b.id !== props.selectedBoard?.id
+      );
+
+      if (remainingBoards.length > 0) {
+        const newSelectedBoard = remainingBoards[0];
+
+        try {
+          const columns = await getColumn(newSelectedBoard.id);
+
+          for (const column of columns) {
+            const tasks = await getTask(column.id);
+
+            for (const task of tasks) {
+              task.subtask = await getSubtask(task.id);
+            }
+
+            column.task = tasks;
+          }
+
+          props.setSelectedBoard({
+            ...newSelectedBoard,
+            board_column: columns,
+          });
+        } catch (err) {
+          console.error("Failed to fetch columns for new board:", err);
+          props.setSelectedBoard({ ...newSelectedBoard, board_column: [] });
+        }
+      } else {
+        props.setSelectedBoard(null);
+      }
+
       props.setDeleteBoardModalOpen(false);
     } catch (err) {
       console.error("Error deleting board:", err);
