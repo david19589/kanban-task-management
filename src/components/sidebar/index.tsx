@@ -91,12 +91,17 @@ function Sidebar(props: {
         >
           <img src={sunSvg} alt="sunSvg" className="h-max select-none" />
           <label className="inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="toggle" className="sr-only peer" />
+            <input type="checkbox" id="toggle" className="sr-only" />
             <span
               onClick={() => {
                 props.setDarkMode(!props.darkMode);
               }}
-              className="relative w-[2.75rem] h-[1.5rem] bg-[#A729F5] rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[0.1875rem] after:start-[0.25rem] after:bg-[#FFF] after:rounded-full after:h-[1.125rem] after:w-[1.125rem] after:transition-all"
+              className={clsx(
+                props.darkMode
+                  ? "bg-[#A729F5] after:translate-x-full"
+                  : "bg-gray-400",
+                "relative w-[2.75rem] h-[1.5rem] rounded-full after:absolute after:top-[0.1875rem] after:start-[0.25rem] after:bg-[#FFF] after:rounded-full after:h-[1.125rem] after:w-[1.125rem] after:transition-all"
+              )}
             />
           </label>
           <img src={moonSvg} alt="moonSvg" className="h-max select-none" />
