@@ -1,7 +1,12 @@
 import clsx from "clsx";
 import Modal from ".";
 import crossSvg from "../../assets/icon-cross.svg";
-import { addTask, boardColumn, taskFormData } from "../../utils/api";
+import {
+  addSubtask,
+  addTask,
+  boardColumn,
+  taskFormData,
+} from "../../utils/api";
 import { z, ZodType } from "zod";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -49,6 +54,7 @@ function AddNewTask(props: {
       task_name: "",
       description: "",
       status: "",
+      subtask: [{ subtask_name: "" }],
     },
   });
 
@@ -69,7 +75,7 @@ function AddNewTask(props: {
 
         if (!selectedColumn) return;
 
-        const addedTask = await addTask({
+        const newTask = await addTask({
           task_name: data.task_name,
           id: data.id,
           description: data.description,
@@ -78,7 +84,19 @@ function AddNewTask(props: {
           column_id: selectedColumn.id,
         });
 
-        console.log("Task added successfully:", addedTask);
+        if (newTask && newTask.id) {
+          await Promise.all(
+            data.subtask.map(async (subtask) => {
+              await addSubtask({
+                subtask_name: subtask.subtask_name,
+                id: subtask.id,
+                is_completed: false,
+                task_id: newTask.id,
+              });
+            })
+          );
+        }
+
         props.fetchBoards();
         reset();
         props.setAddTaskModalOpen(false);
@@ -132,10 +150,12 @@ function AddNewTask(props: {
                 <input
                   {...register("task_name")}
                   type="text"
-                  id="board-name"
+                  id="task-name"
                   placeholder="e.g. Web Design"
                   className={clsx(
-                    errors.task_name && "border-[#EA5555]",
+                    errors.task_name
+                      ? "border-[#EA5555]"
+                      : "hover:border-[#635FC7] transition-all duration-200",
                     props.darkMode
                       ? "bg-[#2B2C37] text-[#FFF]"
                       : "bg-[#FFF] text-[#000112]",
@@ -166,7 +186,7 @@ function AddNewTask(props: {
                   props.darkMode
                     ? "bg-[#2B2C37] text-[#FFF]"
                     : "bg-[#FFF] text-[#000112]",
-                  "text-[0.85rem] leading-[1.5rem] font-[500] rounded-md border-[0.0625rem] border-[#828FA340] px-[1rem] py-[0.5rem] pb-[2rem] w-full outline-none resize-none"
+                  "text-[0.85rem] leading-[1.5rem] font-[500] rounded-md border-[0.0625rem] border-[#828FA340] px-[1rem] py-[0.5rem] pb-[2rem] w-full outline-none resize-none hover:border-[#635FC7] transition-all duration-200"
                 )}
               />
             </div>
@@ -201,8 +221,9 @@ function AddNewTask(props: {
                         type="text"
                         id={`${index} subtask`}
                         className={clsx(
-                          errors.subtask?.[index]?.subtask_name &&
-                            "border-[#EA5555]",
+                          errors.subtask?.[index]?.subtask_name
+                            ? "border-[#EA5555]"
+                            : "hover:border-[#635FC7] transition-all duration-200",
                           props.darkMode
                             ? "bg-[#2B2C37] text-[#FFF]"
                             : "bg-[#FFF] text-[#000112]",
@@ -260,11 +281,16 @@ function AddNewTask(props: {
                 <div
                   onMouseUp={toggleStatusDropdown}
                   className={clsx(
-                    errors.status && "border-[#EA5555]",
+                    !errors.status && props.showStatuses
+                      ? "border-[#635FC7]"
+                      : "border-[#828FA340]",
+                    errors.status
+                      ? "border-[#EA5555]"
+                      : "hover:border-[#635FC7] transition-all duration-200",
                     props.darkMode
                       ? "bg-[#2B2C37] text-[#FFF]"
                       : "bg-[#FFF] text-[#000112]",
-                    "flex items-center justify-between text-[0.85rem] leading-[1.5rem] font-[500] rounded-md border-[0.0625rem] border-[#828FA340] px-[1rem] py-[0.5rem] w-full cursor-pointer"
+                    "flex items-center justify-between text-[0.85rem] leading-[1.5rem] font-[500] rounded-md border-[0.0625rem] px-[1rem] py-[0.5rem] w-full cursor-pointer"
                   )}
                 >
                   <h2
@@ -296,7 +322,7 @@ function AddNewTask(props: {
                     props.darkMode
                       ? "bg-[#2B2C37] text-[#FFF]"
                       : "bg-[#FFF] text-[#000112]",
-                    "flex-col items-start justify-between gap-[0.5rem] absolute top-[4rem] text-[0.85rem] leading-[1.5rem] font-[500] rounded-md px-[1rem] py-[0.5rem] w-full shadow-md overflow-y-scroll h-[5rem] custom-scrollbar"
+                    "flex-col items-start justify-between gap-[0.5rem] absolute top-[3.5rem] text-[0.85rem] leading-[1.5rem] font-[500] rounded-md px-[1rem] py-[0.5rem] w-full shadow-md overflow-y-scroll h-[5rem] custom-scrollbar"
                   )}
                 >
                   {props.selectedBoard?.board_column
