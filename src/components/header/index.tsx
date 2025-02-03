@@ -20,12 +20,11 @@ function Header(props: {
   setEditBoardModalOpen: (status: boolean) => void;
   boards: boardColumn[];
   setBoards: (status: boardColumn[]) => void;
-  newBoardName: string;
-  setNewBoardName: (status: string) => void;
   setAddBoardModalOpen: (status: boolean) => void;
   setDeleteBoardModalOpen: (status: boolean) => void;
   selectedBoard: boardColumn | null;
   handleBoardClick: (boardId: string) => void;
+  setAddTaskModalOpen: (status: boolean) => void;
 }) {
   const [seeBoards, setSeeBoards] = useState(false);
   const [boardEllipsisMenu, setBoardEllipsisMenu] = useState(false);
@@ -45,6 +44,29 @@ function Header(props: {
     e.stopPropagation();
     setBoardEllipsisMenu(!boardEllipsisMenu);
     setSeeBoards(false);
+  };
+
+  const handleDeleteBoard = () => {
+    if (props.boards.length > 0) {
+      props.setDeleteBoardModalOpen(true);
+      setBoardEllipsisMenu(false);
+    }
+  };
+
+  const addNewTask = () => {
+    if (
+      props.selectedBoard?.board_column?.length !== 0 &&
+      props.boards.length > 0
+    ) {
+      props.setAddTaskModalOpen(true);
+    }
+  };
+
+  const editBoard = () => {
+    if (props.boards.length > 0) {
+      props.setEditBoardModalOpen(true);
+      setBoardEllipsisMenu(false);
+    }
   };
 
   return (
@@ -179,7 +201,12 @@ function Header(props: {
                   onClick={() => {
                     props.setDarkMode(!props.darkMode);
                   }}
-                  className="relative w-[2.75rem] h-[1.5rem] bg-[#A729F5] rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[0.1875rem] after:start-[0.25rem] after:bg-[#FFF] after:rounded-full after:h-[1.125rem] after:w-[1.125rem] after:transition-all"
+                  className={clsx(
+                    props.darkMode
+                      ? "bg-[#A729F5] after:translate-x-full"
+                      : "bg-gray-400",
+                    "relative w-[2.75rem] h-[1.5rem] rounded-full after:absolute after:top-[0.1875rem] after:start-[0.25rem] after:bg-[#FFF] after:rounded-full after:h-[1.125rem] after:w-[1.125rem] after:transition-all"
+                  )}
                 />
               </label>
               <img src={moonSvg} alt="moonSvg" className="h-max select-none" />
@@ -189,8 +216,10 @@ function Header(props: {
       )}
       <div className="md:gap-[1.5rem] flex items-center gap-[1rem]">
         <button
+          onClick={addNewTask}
           className={clsx(
-            props.selectedBoard?.board_column.length !== 0
+            props.selectedBoard?.board_column?.length !== 0 &&
+              props.boards.length > 0
               ? "opacity-1 cursor-pointer"
               : "opacity-25 cursor-default",
             "md:px-[1.5rem] md:py-[0.9375rem] px-[1.125rem] py-[0.625rem] bg-[#635FC7] hover:bg-[#A8A4FF] rounded-full outline-none select-none transition-all duration-200"
@@ -213,24 +242,28 @@ function Header(props: {
           className={clsx(
             boardEllipsisMenu ? "flex" : "hidden",
             props.darkMode ? "bg-[#20212C]" : "bg-[#FFF]",
-            "flex flex-col items-start gap-[1rem] absolute top-[5rem] right-[1rem] p-[1rem] pr-[4rem] rounded-xl"
+            "flex flex-col items-start gap-[1rem] absolute top-[5rem] right-[1rem] p-[1rem] pr-[4rem] rounded-xl shadow-md"
           )}
         >
           <button
-            onClick={() => {
-              props.setEditBoardModalOpen(true);
-              setBoardEllipsisMenu(false);
-            }}
-            className="text-[0.85rem] leading-[1.5rem] font-[500] text-[#828FA3] outline-none"
+            onClick={editBoard}
+            className={clsx(
+              props.boards.length < 1
+                ? "text-[#828fa38e] cursor-default"
+                : "text-[#828FA3] hover:text-[#828fa3e5]",
+              "text-[0.85rem] leading-[1.5rem] font-[500] outline-none transition-all duration-200"
+            )}
           >
             Edit Board
           </button>
           <button
-            onClick={() => {
-              props.setDeleteBoardModalOpen(true);
-              setBoardEllipsisMenu(false);
-            }}
-            className="text-[0.85rem] leading-[1.5rem] font-[500] text-[#EA5555] outline-none"
+            onClick={handleDeleteBoard}
+            className={clsx(
+              props.boards.length < 1
+                ? "text-[#ea555573] cursor-default"
+                : "text-[#EA5555] hover:text-[#ea5555e5]",
+              "text-[0.85rem] leading-[1.5rem] font-[500] outline-none transition-all duration-200"
+            )}
           >
             Delete Board
           </button>
