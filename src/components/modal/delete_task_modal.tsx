@@ -1,11 +1,28 @@
 import clsx from "clsx";
 import Modal from ".";
+import { deleteTask, taskFormData } from "../../utils/api";
 
 function DeleteTaskModal(props: {
   deleteTaskModalOpen: boolean;
   setDeleteTaskModalOpen: (status: boolean) => void;
   darkMode: boolean;
+  fetchBoards: () => void;
+  selectedTask: taskFormData | null;
 }) {
+  const handleDelete = async () => {
+    if (!props.selectedTask) return;
+
+    try {
+      await deleteTask(props.selectedTask?.id);
+
+      props.setDeleteTaskModalOpen(false);
+      props.fetchBoards();
+    } catch (err) {
+      console.error("Error deleting task:", err);
+      alert("Failed to delete the task. Please try again.");
+    }
+  };
+
   return (
     <Modal
       isOpen={props.deleteTaskModalOpen}
@@ -26,7 +43,10 @@ function DeleteTaskModal(props: {
           subtasks? This action cannot be reversed.
         </p>
         <div className="flex items-center mt-4 space-x-4 w-full">
-          <button className="text-[0.85rem] leading-[1.45rem] font-[700] text-[#FFF] px-[1rem] py-[0.5rem] bg-[#EA5555] rounded-full hover:bg-[#FF9898] w-full transition-all duration-200">
+          <button
+            onClick={handleDelete}
+            className="text-[0.85rem] leading-[1.45rem] font-[700] text-[#FFF] px-[1rem] py-[0.5rem] bg-[#EA5555] rounded-full hover:bg-[#FF9898] w-full transition-all duration-200"
+          >
             Delete
           </button>
           <button
