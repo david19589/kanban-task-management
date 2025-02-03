@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { boardColumn } from "../../utils/api";
+import { boardColumn, taskFormData } from "../../utils/api";
 import plusSvg from "../../assets/icon-add-task-mobile.svg";
 
 function Board(props: {
@@ -9,9 +9,10 @@ function Board(props: {
   setEditBoardModalOpen: (status: boolean) => void;
   selectedBoard: boardColumn | null;
   setShowTaskDetails: (status: boolean) => void;
+  setSelectedTask: (status: taskFormData | null) => void;
 }) {
   const filteredColumns =
-    props.selectedBoard?.board_column.filter(
+    props.selectedBoard?.board_column?.filter(
       (column) => column.board_id === props.selectedBoard?.id
     ) || [];
 
@@ -29,26 +30,27 @@ function Board(props: {
           <p className="text-[1.125rem] leading-[1.4rem] font-[700] text-[#828FA3] w-full text-center">
             This board is empty. Create a new column to get started.
           </p>
-          <button className="flex items-center gap-[0.5rem] px-[1.5rem] py-[0.9375rem] max-w-[12.15rem] w-full bg-[#635FC7] hover:bg-[#A8A4FF] rounded-full outline-none select-none transition-all duration-200">
+          <button
+            onClick={() => {
+              props.setEditBoardModalOpen(true);
+            }}
+            className="flex items-center gap-[0.5rem] px-[1.5rem] py-[0.9375rem] max-w-[12.15rem] w-full bg-[#635FC7] hover:bg-[#A8A4FF] rounded-full outline-none select-none transition-all duration-200"
+          >
             <img src={plusSvg} alt="plusSvg" />
-            <button
-              onClick={() => {
-                props.setEditBoardModalOpen(true);
-              }}
-              className="text-[0.9375rem] leading-[1.15rem] font-[700] text-[#FFF] outline-none"
-            >
+            <h2 className="text-[0.9375rem] leading-[1.15rem] font-[700] text-[#FFF]">
               Add New Column
-            </button>
+            </h2>
           </button>
         </div>
       ) : (
         <div className="lg:mt-[7.5rem] flex gap-[1.5rem] mt-[6.5rem] pb-[1.5rem] overflow-x-scroll custom-scrollbar">
           {filteredColumns.map((column) => {
-            const tasksFromColumn = column.task || [];
+            const filteredTasks =
+              column.task.filter((task) => task.column_id === column.id) || [];
 
             return (
               <div
-                key={column.column_name}
+                key={column.id}
                 className="flex flex-col gap-[1.5rem] w-[17.5rem]"
               >
                 <div className="flex items-center gap-[0.5rem] w-[17.5rem]">
@@ -57,14 +59,15 @@ function Board(props: {
                     {column.column_name}
                   </h2>
                   <span className="text-[0.75rem] leading-[1rem] font-[700] text-[#828FA3]">
-                    ( {tasksFromColumn?.length} )
+                    ( {filteredTasks?.length} )
                   </span>
                 </div>
-                {tasksFromColumn.map((task) => (
+                {filteredTasks.map((task) => (
                   <div
                     key={task.id}
                     onClick={() => {
                       props.setShowTaskDetails(true);
+                      props.setSelectedTask(task);
                     }}
                     className={clsx(
                       props.darkMode ? "bg-[#2B2C37]" : "bg-[#FFF]",
@@ -80,7 +83,9 @@ function Board(props: {
                       {task.task_name}
                     </h1>
                     <h3 className="text-[0.75rem] leading-[1rem] font-[700] text-[#828FA3]">
-                      0 of 5 subsTasks
+                      {` ${
+                        task?.subtask?.filter((sub) => sub.is_completed).length
+                      } of ${task?.subtask?.length} subsTasks`}
                     </h3>
                   </div>
                 ))}
